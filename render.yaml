@@ -2,7 +2,7 @@ services:
   - type: web
     name: discord-leaderboard-bot
     env: python
-    pythonVersion: "3.11.9"  # ADD THIS LINE
+    pythonVersion: "3.10.13"
     region: frankfurt
     plan: free
     healthCheckPath: /health
