@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: discord-leaderboard-bot
+    env: python
+    region: frankfurt
+    plan: free
+    healthCheckPath: /health
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TOKEN
+        sync: false
