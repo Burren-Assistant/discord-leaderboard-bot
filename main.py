@@ -1,4 +1,5 @@
 import os
+os.environ["DISCORD_INTERACTIONS"] = "0"  # NEW LINE - DISABLES VOICE
 import discord
 from discord.ext import commands, tasks
 import sqlite3
