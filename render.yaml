@@ -2,8 +2,7 @@ services:
   - type: web
     name: discord-leaderboard-bot
     env: python
-    pythonVersion: "3.10.13"
-    region: frankfurt
+    region: oregon
     plan: free
     healthCheckPath: /health
     buildCommand: chmod +x build.sh && ./build.sh
