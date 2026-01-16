@@ -1,0 +1,10 @@
+[project]
+name = "discord-leaderboard-bot"
+version = "1.0.0"
+dependencies = [
+    "discord.py>=2.3.0",
+    "flask>=2.3.0",
+]
+
+[tool.railway]
+start = "python main.py"
