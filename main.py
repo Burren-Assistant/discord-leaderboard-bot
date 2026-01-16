@@ -7,6 +7,33 @@ from datetime import datetime as dt
 from typing import Dict, Set, List
 import asyncio
 
+# ========== KEEP ALIVE SERVER (PREVENTS SLEEP) ==========
+from flask import Flask
+from threading import Thread
+import time
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+@app.route('/health')
+def health():
+    return "OK", 200
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# Start the keep-alive server
+keep_alive()
+print("✅ Keep-alive server started on port 8080")
+# ========== END KEEP ALIVE ==========
+
 # ========== CONFIGURATION ==========
 TOKEN = os.getenv("TOKEN") 
 
