@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "🔧 Setting up Python 3.11 environment..."
+echo "🔧 Setting up Python 3.10.13 environment..."
 python --version
 echo "Installing dependencies..."
 pip install --upgrade pip
