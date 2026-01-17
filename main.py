@@ -624,58 +624,59 @@ async def mystats(ctx):
         inline=True
     )
     
-    # Today's progress (if any activity)
+    # Today's progress
     if stats:
         limits_text = ""
-        # Add your existing daily limits display here
-        # (copy from your current mystats function)
+        if stats['common_messages'] > 0 or stats['exclusive_messages'] > 0 or stats['thread_messages'] > 0:
+            limits_text += f"Messages: {stats['common_messages']}/{DAILY_LIMITS['common_channel']} common, "
+            limits_text += f"{stats['exclusive_messages']}/{DAILY_LIMITS['exclusive_channel']} exclusive, "
+            limits_text += f"{stats['thread_messages']}/{DAILY_LIMITS['thread']} thread\n"
+        
+        if stats['reactions'] > 0:
+            limits_text += f"Reactions: {stats['reactions']}/{DAILY_LIMITS['reaction']}\n"
+        
+        if stats['reply_mentions'] > 0:
+            limits_text += f"Reply/Mentions: {stats['reply_mentions']}/{DAILY_LIMITS['reply_mention']}\n"
+        
+        if stats['voice_points'] > 0:
+            limits_text += f"Voice Points: {stats['voice_points']}/{DAILY_LIMITS['voice_points']}\n"
+        
+        if stats['first_message_bonus'] > 0:
+            limits_text += "✅ First message bonus claimed today!\n"
         
         embed.add_field(
             name="📈 Today's Progress", 
             value=limits_text or "No activity today yet!", 
             inline=False
         )
-    # Calculate MAX possible points remaining today
-max_remaining = 0
-if stats:
-    # Common messages
-    common_left = max(0, DAILY_LIMITS['common_channel'] - stats['common_messages'])
-    max_remaining += common_left * POINTS['common_channel']
     
-    # Exclusive messages  
-    exclusive_left = max(0, DAILY_LIMITS['exclusive_channel'] - stats['exclusive_messages'])
-    max_remaining += exclusive_left * POINTS['exclusive_channel']
+    # Calculate remaining points
+    if stats:
+        remaining = 0
+        # Messages
+        remaining += (DAILY_LIMITS['common_channel'] - stats['common_messages']) * POINTS['common_channel']
+        remaining += (DAILY_LIMITS['exclusive_channel'] - stats['exclusive_messages']) * POINTS['exclusive_channel']
+        remaining += (DAILY_LIMITS['thread'] - stats['thread_messages']) * POINTS['thread']
+        # Reactions
+        remaining += (DAILY_LIMITS['reaction'] - stats['reactions']) * POINTS['reaction']
+        # Reply mentions
+        remaining += (DAILY_LIMITS['reply_mention'] - stats['reply_mentions']) * POINTS['reply_mention']
+        # Voice
+        remaining += (DAILY_LIMITS['voice_points'] - stats['voice_points'])
+        # First message bonus
+        if stats['first_message_bonus'] == 0:
+            remaining += POINTS['first_message']
+        
+        # Apply weekend multiplier
+        remaining = int(remaining * get_weekend_multiplier())
+        
+        if remaining > 0:
+            embed.add_field(
+                name="🎯 Points Available Today", 
+                value=f"**{remaining}** points still up for grabs!", 
+                inline=False
+            )
     
-    # Thread messages
-    thread_left = max(0, DAILY_LIMITS['thread'] - stats['thread_messages'])
-    max_remaining += thread_left * POINTS['thread']
-    
-    # Reactions
-    reaction_left = max(0, DAILY_LIMITS['reaction'] - stats['reactions'])
-    max_remaining += reaction_left * POINTS['reaction']
-    
-    # Reply/mentions
-    reply_left = max(0, DAILY_LIMITS['reply_mention'] - stats['reply_mentions'])
-    max_remaining += reply_left * POINTS['reply_mention']
-    
-    # Voice points
-    voice_left = max(0, DAILY_LIMITS['voice_points'] - stats['voice_points'])
-    max_remaining += voice_left
-    
-    # First message bonus (if not claimed)
-    if stats['first_message_bonus'] == 0:
-        max_remaining += POINTS['first_message']
-    
-    # Apply weekend multiplier
-    max_remaining = int(max_remaining * get_weekend_multiplier())
-
-# Add to embed
-if max_remaining > 0:
-    embed.add_field(
-        name="🎯 Points Available Today", 
-        value=f"**{max_remaining}** points still up for grabs!",
-        inline=False
-    )
     # Weekend bonus notice
     if get_weekend_multiplier() > 1:
         embed.add_field(
