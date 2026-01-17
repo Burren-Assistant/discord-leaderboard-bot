@@ -2,7 +2,7 @@ services:
   - type: web
     name: discord-leaderboard-bot
     env: pip
-    region: oregon
+    region: frankfurt
     plan: free
     healthCheckPath: /health
     buildCommand: pip install pipenv && pipenv install
