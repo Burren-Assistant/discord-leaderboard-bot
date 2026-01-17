@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: discord-leaderboard-bot
+    env: pip
+    region: oregon
+    plan: free
+    healthCheckPath: /health
+    buildCommand: pip install pipenv && pipenv install
+    startCommand: pipenv run python main.py
+    envVars:
+      - key: TOKEN
+        sync: false
