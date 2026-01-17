@@ -32,7 +32,7 @@ import discord
 from discord.ext import commands, tasks
 import sqlite3
 import datetime
-from datetime import datetime as dt
+from datetime import timezone
 from typing import Dict, Set, List
 import asyncio
 # ========== END KEEP ALIVE ==========
@@ -142,7 +142,7 @@ db = init_db()
 
 # ========== HELPER FUNCTIONS ==========
 def get_today():
-    return dt.utcnow().strftime("%Y-%m-%d")
+    return dt.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
 def get_user_stats(user_id, date=None):
     if date is None:
@@ -225,7 +225,7 @@ def check_first_message(user_id):
 
 def update_streak(user_id):
     today = get_today()
-    yesterday = (dt.utcnow() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday = (dt.now(datetime.timezone.utc) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     
     c = db.cursor()
     
