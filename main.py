@@ -801,7 +801,33 @@ async def update_pinned_leaderboard():
             await new_message.pin()
             
         except discord.errors.Forbidden:
-            print(f"No permission to update pinned message in {leaderboard_channel.name}")
+            print(f"No permission to update pinned message in {leaderboard_channel.name}")0
+
+@bot.command(name="resetseason", description="[ADMIN] Reset all points for new season")
+@commands.has_permissions(administrator=True)
+async def reset_season(ctx, confirm: str = None):
+    if confirm != "YES":
+        await ctx.send(
+            "⚠️ **WARNING:** This will reset ALL points for EVERYONE!\n"
+            "To confirm, type: `/resetseason YES`"
+        )
+        return
+    
+    c = db.cursor()
+    c.execute('UPDATE users SET total_points = 0')
+    c.execute('DELETE FROM daily_stats')
+    db.commit()
+    
+    await ctx.send("✅ **Season reset!** All points have been set to zero.")
+    await update_pinned_leaderboard()  # Update the display
+        
+# Archive current scores before resetting
+c.execute('''CREATE TABLE IF NOT EXISTS score_history 
+             (season TEXT, user_id INTEGER, total_points INTEGER)''')
+
+c.execute('INSERT INTO score_history SELECT ?, user_id, total_points FROM users', 
+          (f"Season_{get_today()}",))
+# Then reset current points
 
 # Add this task with your other tasks
 @tasks.loop(hours=2)
