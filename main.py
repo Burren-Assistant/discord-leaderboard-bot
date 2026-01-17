@@ -635,7 +635,47 @@ async def mystats(ctx):
             value=limits_text or "No activity today yet!", 
             inline=False
         )
+    # Calculate MAX possible points remaining today
+max_remaining = 0
+if stats:
+    # Common messages
+    common_left = max(0, DAILY_LIMITS['common_channel'] - stats['common_messages'])
+    max_remaining += common_left * POINTS['common_channel']
     
+    # Exclusive messages  
+    exclusive_left = max(0, DAILY_LIMITS['exclusive_channel'] - stats['exclusive_messages'])
+    max_remaining += exclusive_left * POINTS['exclusive_channel']
+    
+    # Thread messages
+    thread_left = max(0, DAILY_LIMITS['thread'] - stats['thread_messages'])
+    max_remaining += thread_left * POINTS['thread']
+    
+    # Reactions
+    reaction_left = max(0, DAILY_LIMITS['reaction'] - stats['reactions'])
+    max_remaining += reaction_left * POINTS['reaction']
+    
+    # Reply/mentions
+    reply_left = max(0, DAILY_LIMITS['reply_mention'] - stats['reply_mentions'])
+    max_remaining += reply_left * POINTS['reply_mention']
+    
+    # Voice points
+    voice_left = max(0, DAILY_LIMITS['voice_points'] - stats['voice_points'])
+    max_remaining += voice_left
+    
+    # First message bonus (if not claimed)
+    if stats['first_message_bonus'] == 0:
+        max_remaining += POINTS['first_message']
+    
+    # Apply weekend multiplier
+    max_remaining = int(max_remaining * get_weekend_multiplier())
+
+# Add to embed
+if max_remaining > 0:
+    embed.add_field(
+        name="🎯 Points Available Today", 
+        value=f"**{max_remaining}** points still up for grabs!",
+        inline=False
+    )
     # Weekend bonus notice
     if get_weekend_multiplier() > 1:
         embed.add_field(
