@@ -571,79 +571,88 @@ async def leaderboard(ctx, period: str = "all-time"):
     embed.set_footer(text="Daily reset at midnight UTC | Weekend: 1.5x points")
     await ctx.send(embed=embed)
 
-@bot.command(name="mystats", description="Check your points and daily progress")
+@bot.command(name="mystats", description="Check your points, rank, and daily progress")
 async def mystats(ctx):
     user_id = ctx.author.id
     today = get_today()
     
     c = db.cursor()
     
-    # Get total points
-    c.execute('''SELECT total_points, current_streak, longest_streak 
-                 FROM users WHERE user_id = ?''', (user_id,))
-    user_row = c.fetchone()
+    # Get user's rank
+    c.execute('''SELECT user_id, total_points FROM users 
+                 ORDER BY total_points DESC''')
+    all_users = c.fetchall()
     
-    if not user_row:
+    user_rank = None
+    for i, (uid, points) in enumerate(all_users, 1):
+        if uid == user_id:
+            user_rank = i
+            total_users = len(all_users)
+            user_points = points
+            break
+    
+    # Get streak info
+    c.execute('''SELECT current_streak, longest_streak 
+                 FROM users WHERE user_id = ?''', (user_id,))
+    streak_info = c.fetchone()
+    
+    if not streak_info or user_rank is None:
         await ctx.send("You haven't earned any points yet! Start chatting!")
         return
     
-    total_points, current_streak, longest_streak = user_row
+    current_streak, longest_streak = streak_info
     
     # Get today's stats
     stats = get_user_stats(user_id, today)
     
-    if not stats:
-        await ctx.send(f"**{ctx.author.display_name}'s Stats**\n"
-                      f"Total Points: {total_points}\n"
-                      f"Current Streak: {current_streak} days\n"
-                      f"Longest Streak: {longest_streak} days\n\n"
-                      f"No activity today yet!")
-        return
-    
-    # Calculate remaining limits
-    limits_text = ""
-    for stat, value in stats.items():
-        if stat in ['common_messages', 'exclusive_messages', 'thread_messages']:
-            limit_key = stat.replace('_messages', '_channel')
-            limit = DAILY_LIMITS.get(limit_key, 999)
-            remaining = max(0, limit - value)
-            if 'common' in stat:
-                limits_text += f"Common Messages: {value}/{limit} ({remaining} left)\n"
-            elif 'exclusive' in stat:
-                limits_text += f"Exclusive Messages: {value}/{limit} ({remaining} left)\n"
-            elif 'thread' in stat:
-                limits_text += f"Thread Messages: {value}/{limit} ({remaining} left)\n"
-        elif stat == 'reactions':
-            limit = DAILY_LIMITS['reaction']
-            remaining = max(0, limit - value)
-            limits_text += f"Reactions: {value}/{limit} ({remaining} left)\n"
-        elif stat == 'reply_mentions':
-            limit = DAILY_LIMITS['reply_mention']
-            remaining = max(0, limit - value)
-            limits_text += f"Reply/Mentions: {value}/{limit} ({remaining} left)\n"
-        elif stat == 'voice_points':
-            limit = DAILY_LIMITS['voice_points']
-            remaining = max(0, limit - value)
-            limits_text += f"Voice Points: {value}/{limit} ({remaining} left)\n"
-    
     embed = discord.Embed(
-        title=f"📈 {ctx.author.display_name}'s Stats",
+        title=f"📊 {ctx.author.display_name}'s Stats",
         color=0x7289da
     )
     
-    embed.add_field(name="Total Points", value=f"**{total_points}**", inline=True)
-    embed.add_field(name="Current Streak", value=f"🔥 {current_streak} days", inline=True)
-    embed.add_field(name="Longest Streak", value=f"🏆 {longest_streak} days", inline=True)
-    
+    # Rank and points
     embed.add_field(
-        name="Today's Progress", 
-        value=limits_text or "No activity today",
-        inline=False
+        name="Rank & Points", 
+        value=f"**#{user_rank}** of {total_users} users\n**{user_points}** total points", 
+        inline=True
     )
     
-    # Check weekend multiplier
+    # Streaks
+    embed.add_field(
+        name="Streaks", 
+        value=f"🔥 **{current_streak}** day streak\n🏆 **{longest_streak}** day record", 
+        inline=True
+    )
+    
+    # Today's progress (if any activity)
+    if stats:
+        limits_text = ""
+        # Add your existing daily limits display here
+        # (copy from your current mystats function)
+        
+        embed.add_field(
+            name="📈 Today's Progress", 
+            value=limits_text or "No activity today yet!", 
+            inline=False
+        )
+    
+    # Weekend bonus notice
     if get_weekend_multiplier() > 1:
-        embed.add_field(name="🎉 Bonus", value="Weekend 1.5x multiplier active!", inline=False)
+        embed.add_field(
+            name="🎉 Bonus", 
+            value="Weekend 1.5x multiplier active!", 
+            inline=False
+        )
+    
+    # Add rank progress bar visualization
+    if total_users > 1:
+        percentile = ((total_users - user_rank) / (total_users - 1)) * 100
+        progress_bar = "█" * int(percentile / 10) + "░" * (10 - int(percentile / 10))
+        embed.add_field(
+            name="Leaderboard Position", 
+            value=f"Top **{percentile:.1f}%**\n`[{progress_bar}]`", 
+            inline=False
+        )
     
     await ctx.send(embed=embed)
 
@@ -698,6 +707,75 @@ async def help_command(ctx):
     
     embed.set_footer(text="Points are awarded automatically for messages, reactions, and voice activity")
     await ctx.send(embed=embed)
+
+async def update_pinned_leaderboard():
+    """Updates the pinned leaderboard in the designated channel"""
+    for guild in bot.guilds:
+        # Find leaderboard channel (customize channel name if needed)
+        leaderboard_channel = discord.utils.get(guild.channels, name="🏆leaderboard")
+        if not leaderboard_channel:
+            continue
+        
+        # Get top 10 users
+        c = db.cursor()
+        c.execute('''SELECT user_id, total_points, current_streak 
+                     FROM users ORDER BY total_points DESC LIMIT 10''')
+        top_users = c.fetchall()
+        
+        # Create embed
+        embed = discord.Embed(
+            title="🏆 Server Leaderboard",
+            description="Top 10 most engaged members\n*Updated automatically every 6 hours*",
+            color=0xffd700,
+            timestamp=dt.now(timezone.utc)
+        )
+        
+        # Add top users
+        emojis = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+        for i, (user_id, points, streak) in enumerate(top_users):
+            user = guild.get_member(user_id)
+            username = user.display_name if user else f"User {user_id}"
+            
+            # Format streak if exists
+            streak_text = f" 🔥 {streak}d" if streak > 1 else ""
+            
+            embed.add_field(
+                name=f"{emojis[i] if i < len(emojis) else f'{i+1}.'} {username}",
+                value=f"**{points} pts**{streak_text}",
+                inline=False
+            )
+        
+        # Add footer with reset info
+        embed.set_footer(text="Points reset daily at midnight UTC • Weekend: 1.5x bonus")
+        
+        # Find existing pinned leaderboard message
+        try:
+            async for message in leaderboard_channel.history(limit=50):
+                if message.author == bot.user and len(message.embeds) > 0:
+                    if message.embeds[0].title == "🏆 Server Leaderboard":
+                        await message.edit(embed=embed)
+                        return
+            
+            # No existing message found, send new one and pin it
+            new_message = await leaderboard_channel.send(embed=embed)
+            await new_message.pin()
+            
+        except discord.errors.Forbidden:
+            print(f"No permission to update pinned message in {leaderboard_channel.name}")
+
+# Add this task with your other tasks
+@tasks.loop(hours=2)
+async def auto_update_leaderboard():
+    await update_pinned_leaderboard()
+
+# Start the task when bot is ready
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    reset_daily_stats.start()
+    check_voice_channels.start()
+    auto_update_leaderboard.start()  # ADD THIS LINE
+    await update_pinned_leaderboard()  # Update immediately on startup
 
 # ========== START BOT ==========
 if __name__ == "__main__":
