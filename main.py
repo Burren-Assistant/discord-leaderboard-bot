@@ -1,17 +1,11 @@
 import os
-os.environ["DISCORD_INTERACTIONS"] = "0"  # NEW LINE - DISABLES VOICE
-import discord
-from discord.ext import commands, tasks
-import sqlite3
-import datetime
-from datetime import datetime as dt
-from typing import Dict, Set, List
-import asyncio
+# DISABLE VOICE AT OS LEVEL BEFORE ANY IMPORTS
+os.environ["DISCORD_INTERACTIONS"] = "0"
+os.environ["PYTHONWARNINGS"] = "ignore"
 
-# ========== KEEP ALIVE SERVER (PREVENTS SLEEP) ==========
+# Keep-alive server first
 from flask import Flask
 from threading import Thread
-import time
 
 app = Flask('')
 
@@ -30,9 +24,17 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# Start the keep-alive server
 keep_alive()
-print("✅ Keep-alive server started on port 8080")
+print("✅ Keep-alive server started")
+
+# NOW import discord
+import discord
+from discord.ext import commands, tasks
+import sqlite3
+import datetime
+from datetime import datetime as dt
+from typing import Dict, Set, List
+import asyncio
 # ========== END KEEP ALIVE ==========
 
 # ========== CONFIGURATION ==========
