@@ -817,18 +817,16 @@ async def reset_season(ctx, confirm: str = None):
     c = db.cursor()
     c.execute('UPDATE users SET total_points = 0')
     c.execute('DELETE FROM daily_stats')
+    c.execute('''CREATE TABLE IF NOT EXISTS score_history 
+             (season TEXT, user_id INTEGER, total_points INTEGER)''')
+
+    c.execute('INSERT INTO score_history SELECT ?, user_id, total_points FROM users', 
+          (f"Season_{get_today()}",))
+# Then reset current points
     db.commit()
     
     await ctx.send("✅ **Season reset!** All points have been set to zero.")
     await update_pinned_leaderboard()  # Update the display
-        
-# Archive current scores before resetting
-c.execute('''CREATE TABLE IF NOT EXISTS score_history 
-             (season TEXT, user_id INTEGER, total_points INTEGER)''')
-
-c.execute('INSERT INTO score_history SELECT ?, user_id, total_points FROM users', 
-          (f"Season_{get_today()}",))
-# Then reset current points
 
 # Add this task with your other tasks
 @tasks.loop(hours=2)
