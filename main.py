@@ -801,7 +801,7 @@ async def update_pinned_leaderboard():
             await new_message.pin()
             
         except discord.errors.Forbidden:
-            print(f"No permission to update pinned message in {leaderboard_channel.name}")0
+            print(f"No permission to update pinned message in {leaderboard_channel.name}")
 
 @bot.command(name="resetseason", description="[ADMIN] Reset all points for new season")
 @commands.has_permissions(administrator=True)
@@ -833,6 +833,16 @@ c.execute('INSERT INTO score_history SELECT ?, user_id, total_points FROM users'
 @tasks.loop(hours=2)
 async def auto_update_leaderboard():
     await update_pinned_leaderboard()
+
+# Wrap your main bot startup in a try-except
+if __name__ == "__main__":
+    try:
+        bot.run(TOKEN)
+    except SyntaxError as e:
+        print(f"🚨 CRITICAL SYNTAX ERROR: {e}")
+        print("Please check your Python code for typos!")
+    except Exception as e:
+        print(f"🚨 Bot crashed: {e}")
 
 # Start the task when bot is ready
 @bot.event
