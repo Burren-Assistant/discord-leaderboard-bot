@@ -517,7 +517,7 @@ async def reset_daily_stats():
             await leaderboard_channel.send("🌅 New day! Daily counters have been reset. Good luck everyone!")
 
 # ========== COMMANDS ==========
-@bot.command(name="leaderboard", description="Show the top 10 users")
+@bot.tree.command(name="leaderboard", description="Show the top 10 users")
 async def leaderboard(ctx, period: str = "all-time"):
     c = db.cursor()
     
@@ -571,7 +571,7 @@ async def leaderboard(ctx, period: str = "all-time"):
     embed.set_footer(text="Daily reset at midnight UTC | Weekend: 1.5x points")
     await ctx.send(embed=embed)
 
-@bot.command(name="mystats", description="Check your points, rank, and daily progress")
+@bot.tree.command(name="mystats", description="Check your points, rank, and daily progress")
 async def mystats(ctx):
     user_id = ctx.author.id
     today = get_today()
@@ -697,11 +697,11 @@ async def mystats(ctx):
     
     await ctx.send(embed=embed)
 
-@bot.command(name="top10", description="Show top 10 users")
+@bot.tree.command(name="top10", description="Show top 10 users")
 async def top10(ctx):
     await leaderboard(ctx, "all-time")
 
-@bot.command(name="adjust", description="[ADMIN] Adjust user points")
+@bot.tree.command(name="adjust", description="[ADMIN] Adjust user points")
 @commands.has_permissions(administrator=True)
 async def adjust_points(ctx, member: discord.Member, points: int):
     c = db.cursor()
@@ -718,7 +718,7 @@ async def adjust_points(ctx, member: discord.Member, points: int):
     action = "added" if points > 0 else "removed"
     await ctx.send(f"✅ {abs(points)} points {action} from {member.display_name}")
 
-@bot.command(name="resetuser", description="[ADMIN] Reset user's stats")
+@bot.tree.command(name="resetuser", description="[ADMIN] Reset user's stats")
 @commands.has_permissions(administrator=True)
 async def reset_user(ctx, member: discord.Member):
     c = db.cursor()
@@ -727,7 +727,7 @@ async def reset_user(ctx, member: discord.Member):
     db.commit()
     await ctx.send(f"✅ {member.display_name}'s stats have been reset")
 
-@bot.command(name="help", description="Show all commands")
+@bot.tree.command(name="help", description="Show all commands")
 async def help_command(ctx):
     embed = discord.Embed(
         title="🤖 Engagement Bot Commands",
@@ -804,7 +804,7 @@ async def update_pinned_leaderboard():
         except discord.errors.Forbidden:
             print(f"No permission to update pinned message in {leaderboard_channel.name}")
 
-@bot.command(name="resetseason", description="[ADMIN] Reset all points for new season")
+@bot.tree.command(name="resetseason", description="[ADMIN] Reset all points for new season")
 @commands.has_permissions(administrator=True)
 async def reset_season(ctx, confirm: str = None):
     if confirm != "YES":
@@ -828,6 +828,18 @@ async def reset_season(ctx, confirm: str = None):
     await ctx.send("✅ **Season reset!** All points have been set to zero.")
     await update_pinned_leaderboard()  # Update the display
 
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    
+    # CRITICAL: Sync commands globally
+    try:
+        # This registers commands with Discord
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} command(s) globally")
+    except Exception as e:
+        print(f"❌ Command sync failed: {e}")
+    
 # Add this task with your other tasks
 @tasks.loop(hours=2)
 async def auto_update_leaderboard():
