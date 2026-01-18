@@ -37,6 +37,19 @@ from datetime import timezone
 from typing import Dict, Set, List
 import asyncio
 # ========== END KEEP ALIVE ==========
+
+# ========== BOT SETUP ==========
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+intents.guilds = True
+intents.reactions = True
+intents.voice_states = True
+intents.members = True
+
+bot = commands.Bot(command_prefix="/", intents=intents, help_command=None)
+db = init_db()
+
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
     """Handles errors in slash commands"""
@@ -151,18 +164,6 @@ def init_db():
     
     conn.commit()
     return conn
-
-# ========== BOT SETUP ==========
-intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
-intents.guilds = True
-intents.reactions = True
-intents.voice_states = True
-intents.members = True
-
-bot = commands.Bot(command_prefix="/", intents=intents, help_command=None)
-db = init_db()
 
 # ========== HELPER FUNCTIONS ==========
 def get_today():
