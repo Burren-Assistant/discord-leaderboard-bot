@@ -30,13 +30,37 @@ print("✅ Keep-alive server started")
 # NOW import discord
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 import sqlite3
 import datetime
 from datetime import timezone
 from typing import Dict, Set, List
 import asyncio
 # ========== END KEEP ALIVE ==========
-
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error):
+    """Handles errors in slash commands"""
+    if isinstance(error, app_commands.CommandInvokeError):
+        # Get the original error
+        original = error.original
+        
+        # Log the full error
+        print(f"🚨 Command error in '{interaction.command.name}':")
+        print(f"   User: {interaction.user}")
+        print(f"   Error: {original}")
+        print(f"   Traceback: {error}")
+        
+        # Send user-friendly message
+        await interaction.response.send_message(
+            f"❌ Command failed: {type(original).__name__}\n"
+            "The bot owner has been notified.",
+            ephemeral=True
+        )
+    else:
+        await interaction.response.send_message(
+            f"❌ Command error: {error}",
+            ephemeral=True
+        )
 # ========== CONFIGURATION ==========
 TOKEN = os.getenv("TOKEN") 
 
@@ -518,7 +542,8 @@ async def reset_daily_stats():
 
 # ========== COMMANDS ==========
 @bot.tree.command(name="leaderboard", description="Show the top 10 users")
-async def leaderboard(ctx, period: str = "all-time"):
+@app_commands.describe(period="Time period: 'daily' or 'all-time'")
+async def leaderboard(interaction: discord.Interaction, period: str = "all-time"):
     c = db.cursor()
     
     if period.lower() in ["day", "today", "daily"]:
@@ -552,7 +577,7 @@ async def leaderboard(ctx, period: str = "all-time"):
     embed = discord.Embed(title=title, color=0x00ff00)
     
     for i, (user_id, points) in enumerate(top_users, 1):
-        user = ctx.guild.get_member(user_id)
+        user = interaction.guild.get_member(user_id)
         username = user.display_name if user else f"User {user_id}"
         
         # Get streak info
@@ -569,11 +594,16 @@ async def leaderboard(ctx, period: str = "all-time"):
     
     # Add footer with reset time
     embed.set_footer(text="Daily reset at midnight UTC | Weekend: 1.5x points")
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="ping", description="Test if bot responds")
+async def ping(interaction: discord.Interaction):
+    """Simple ping command"""
+    await interaction.response.send_message("🏓 Pong! Bot is working!", ephemeral=False)
 
 @bot.tree.command(name="mystats", description="Check your points, rank, and daily progress")
-async def mystats(ctx):
-    user_id = ctx.author.id
+async def mystats(interaction: discord.Interaction):
+    user_id = 	interaction.user.id
     today = get_today()
     
     c = db.cursor()
@@ -597,7 +627,7 @@ async def mystats(ctx):
     streak_info = c.fetchone()
     
     if not streak_info or user_rank is None:
-        await ctx.send("You haven't earned any points yet! Start chatting!")
+        await interaction.response.send_message("You haven't earned any points yet! Start chatting!")
         return
     
     current_streak, longest_streak = streak_info
@@ -606,7 +636,7 @@ async def mystats(ctx):
     stats = get_user_stats(user_id, today)
     
     embed = discord.Embed(
-        title=f"📊 {ctx.author.display_name}'s Stats",
+        title=f"📊 {interaction.user.display_name}'s Stats",
         color=0x7289da
     )
     
@@ -695,15 +725,15 @@ async def mystats(ctx):
             inline=False
         )
     
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="top10", description="Show top 10 users")
-async def top10(ctx):
-    await leaderboard(ctx, "all-time")
+async def top10(interaction: discord.Interaction):
+    await leaderboard(interaction: discord.Interaction, "all-time")
 
 @bot.tree.command(name="adjust", description="[ADMIN] Adjust user points")
 @commands.has_permissions(administrator=True)
-async def adjust_points(ctx, member: discord.Member, points: int):
+async def adjust_points(interaction: discord.Interaction, member: discord.Member, points: int):
     c = db.cursor()
     c.execute('''UPDATE users 
                  SET total_points = total_points + ? 
@@ -716,19 +746,19 @@ async def adjust_points(ctx, member: discord.Member, points: int):
     db.commit()
     
     action = "added" if points > 0 else "removed"
-    await ctx.send(f"✅ {abs(points)} points {action} from {member.display_name}")
+    await interaction.response.send_message(f"✅ {abs(points)} points {action} from {member.display_name}")
 
 @bot.tree.command(name="resetuser", description="[ADMIN] Reset user's stats")
 @commands.has_permissions(administrator=True)
-async def reset_user(ctx, member: discord.Member):
+async def reset_user(interaction: discord.Interaction, member: discord.Member):
     c = db.cursor()
     c.execute('''DELETE FROM users WHERE user_id = ?''', (member.id,))
     c.execute('''DELETE FROM daily_stats WHERE user_id = ?''', (member.id,))
     db.commit()
-    await ctx.send(f"✅ {member.display_name}'s stats have been reset")
+    await interaction.response.send_message(f"✅ {member.display_name}'s stats have been reset")
 
 @bot.tree.command(name="help", description="Show all commands")
-async def help_command(ctx):
+async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🤖 Engagement Bot Commands",
         color=0x7289da
@@ -747,7 +777,7 @@ async def help_command(ctx):
         embed.add_field(name=cmd, value=desc, inline=False)
     
     embed.set_footer(text="Points are awarded automatically for messages, reactions, and voice activity")
-    await ctx.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
 
 async def update_pinned_leaderboard():
     """Updates the pinned leaderboard in the designated channel"""
@@ -766,7 +796,7 @@ async def update_pinned_leaderboard():
         # Create embed
         embed = discord.Embed(
             title="🏆 Server Leaderboard",
-            description="Top 10 most engaged members\n*Updated automatically every 6 hours*",
+            description="Top 10 most engaged members\n*Updated automatically every 2 hours*",
             color=0xffd700,
             timestamp=dt.now(timezone.utc)
         )
@@ -806,9 +836,9 @@ async def update_pinned_leaderboard():
 
 @bot.tree.command(name="resetseason", description="[ADMIN] Reset all points for new season")
 @commands.has_permissions(administrator=True)
-async def reset_season(ctx, confirm: str = None):
+async def reset_season(interaction.response.send_message, confirm: str = None):
     if confirm != "YES":
-        await ctx.send(
+        await interaction.response.send_message(
             "⚠️ **WARNING:** This will reset ALL points for EVERYONE!\n"
             "To confirm, type: `/resetseason YES`"
         )
@@ -825,7 +855,7 @@ async def reset_season(ctx, confirm: str = None):
 # Then reset current points
     db.commit()
     
-    await ctx.send("✅ **Season reset!** All points have been set to zero.")
+    await interaction.response.send_message("✅ **Season reset!** All points have been set to zero.")
     await update_pinned_leaderboard()  # Update the display
 
 @bot.event
