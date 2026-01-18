@@ -836,7 +836,7 @@ async def update_pinned_leaderboard():
 
 @bot.tree.command(name="resetseason", description="[ADMIN] Reset all points for new season")
 @commands.has_permissions(administrator=True)
-async def reset_season(interaction.response.send_message, confirm: str = None):
+async def reset_season(interaction: discord.Interaction, confirm: str = None):
     if confirm != "YES":
         await interaction.response.send_message(
             "⚠️ **WARNING:** This will reset ALL points for EVERYONE!\n"
