@@ -729,7 +729,7 @@ async def mystats(interaction: discord.Interaction):
 
 @bot.tree.command(name="top10", description="Show top 10 users")
 async def top10(interaction: discord.Interaction):
-    await leaderboard(interaction: discord.Interaction, "all-time")
+    await leaderboard(interaction, "all-time")
 
 @bot.tree.command(name="adjust", description="[ADMIN] Adjust user points")
 @commands.has_permissions(administrator=True)
