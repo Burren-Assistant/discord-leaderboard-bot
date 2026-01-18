@@ -38,6 +38,42 @@ from typing import Dict, Set, List
 import asyncio
 # ========== END KEEP ALIVE ==========
 
+# ========== DATABASE SETUP ==========
+def init_db():
+    conn = sqlite3.connect('leaderboard.db')
+    c = conn.cursor()
+    
+    # Users table
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (user_id INTEGER PRIMARY KEY, 
+                  total_points INTEGER DEFAULT 0,
+                  current_streak INTEGER DEFAULT 0,
+                  longest_streak INTEGER DEFAULT 0,
+                  last_active_date TEXT)''')
+    
+    # Daily stats table
+    c.execute('''CREATE TABLE IF NOT EXISTS daily_stats
+                 (user_id INTEGER, 
+                  date TEXT,
+                  common_messages INTEGER DEFAULT 0,
+                  exclusive_messages INTEGER DEFAULT 0,
+                  thread_messages INTEGER DEFAULT 0,
+                  reactions INTEGER DEFAULT 0,
+                  reply_mentions INTEGER DEFAULT 0,
+                  voice_points INTEGER DEFAULT 0,
+                  first_message_bonus INTEGER DEFAULT 0,
+                  PRIMARY KEY (user_id, date))''')
+    
+    # Voice tracking
+    c.execute('''CREATE TABLE IF NOT EXISTS voice_sessions
+                 (user_id INTEGER,
+                  channel_id INTEGER,
+                  join_time TEXT,
+                  PRIMARY KEY (user_id, channel_id))''')
+    
+    conn.commit()
+    return conn
+
 # ========== BOT SETUP ==========
 intents = discord.Intents.default()
 intents.messages = True
@@ -128,42 +164,6 @@ DAILY_LIMITS = {
 
 # Streak rewards (days: bonus_points)
 STREAK_REWARDS = {3: 18, 7: 50, 14: 110, 30: 250}
-
-# ========== DATABASE SETUP ==========
-def init_db():
-    conn = sqlite3.connect('leaderboard.db')
-    c = conn.cursor()
-    
-    # Users table
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (user_id INTEGER PRIMARY KEY, 
-                  total_points INTEGER DEFAULT 0,
-                  current_streak INTEGER DEFAULT 0,
-                  longest_streak INTEGER DEFAULT 0,
-                  last_active_date TEXT)''')
-    
-    # Daily stats table
-    c.execute('''CREATE TABLE IF NOT EXISTS daily_stats
-                 (user_id INTEGER, 
-                  date TEXT,
-                  common_messages INTEGER DEFAULT 0,
-                  exclusive_messages INTEGER DEFAULT 0,
-                  thread_messages INTEGER DEFAULT 0,
-                  reactions INTEGER DEFAULT 0,
-                  reply_mentions INTEGER DEFAULT 0,
-                  voice_points INTEGER DEFAULT 0,
-                  first_message_bonus INTEGER DEFAULT 0,
-                  PRIMARY KEY (user_id, date))''')
-    
-    # Voice tracking
-    c.execute('''CREATE TABLE IF NOT EXISTS voice_sessions
-                 (user_id INTEGER,
-                  channel_id INTEGER,
-                  join_time TEXT,
-                  PRIMARY KEY (user_id, channel_id))''')
-    
-    conn.commit()
-    return conn
 
 # ========== HELPER FUNCTIONS ==========
 def get_today():
