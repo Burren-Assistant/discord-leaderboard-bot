@@ -403,6 +403,35 @@ async def on_message(message):
                     await message.channel.send(f"🎯 {message.author.mention}: {points_awarded}pts{bonus_text}", delete_after=5)
                 except:
                     pass
+
+    # Check if this is first message in #👋welcome
+    if message.channel.name == "👋welcome" and not message.author.bot:
+        user_id = message.author.id
+        
+        # Check if user already got welcome bonus
+        c = db.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS welcome_bonus 
+                     (user_id INTEGER PRIMARY KEY, bonus_given INTEGER DEFAULT 0)''')
+        
+        c.execute('SELECT bonus_given FROM welcome_bonus WHERE user_id = ?', (user_id,))
+        result = c.fetchone()
+        
+        if not result:  # First time in #👋welcome
+            # Award 10 points
+            c.execute('''UPDATE users 
+                         SET total_points = total_points + 10 
+                         WHERE user_id = ?''', (user_id,))
+            
+            # Mark as received
+            c.execute('INSERT INTO welcome_bonus (user_id, bonus_given) VALUES (?, ?)', 
+                     (user_id, 1))
+            db.commit()
+            
+            # Optional: Send notification
+            await message.channel.send(
+                f"🎉 Welcome {message.author.mention}! +10 bonus points for your first welcome message!",
+                delete_after=10
+            )
     
     await bot.process_commands(message)
 
